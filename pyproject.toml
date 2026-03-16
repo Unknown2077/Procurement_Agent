@@ -1,0 +1,24 @@
+[project]
+name = "task4-procurement-agent"
+version = "0.1.0"
+description = "CLI procurement agent with SQLite and NVIDIA NIM"
+requires-python = ">=3.12"
+dependencies = [
+  "openpyxl>=3.1.5",
+  "langchain>=0.3.27",
+  "langchain-core>=0.3.76",
+  "langchain-nvidia-ai-endpoints>=0.3.13",
+  "langgraph>=0.6.7",
+  "python-dotenv>=1.1.1",
+  "PyYAML>=6.0.2",
+  "jsonschema>=4.25.1",
+  "rapidfuzz>=3.14.1",
+  "pydantic>=2.11.9",
+  "typing-extensions>=4.15.0",
+  "pytest>=8.4.2",
+  "pytest-cov>=7.0.0",
+  "pytest-mock>=3.15.1",
+]
+
+[tool.uv]
+package = false

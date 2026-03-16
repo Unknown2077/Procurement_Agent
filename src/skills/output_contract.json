@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProcurementAgentOutput",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "intent",
+    "query",
+    "reasoning",
+    "rules_triggered",
+    "skill_used",
+    "skill_reason",
+    "confidence_score",
+    "result_count",
+    "result"
+  ],
+  "properties": {
+    "intent": {
+      "type": "string"
+    },
+    "query": {
+      "type": "string"
+    },
+    "reasoning": {
+      "type": "string"
+    },
+    "rules_triggered": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "skill_used": {
+      "type": "boolean"
+    },
+    "skill_reason": {
+      "type": "string"
+    },
+    "confidence_score": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "result_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "result": {
+      "type": "array"
+    },
+    "llm_summary": {
+      "type": "string"
+    }
+  }
+}

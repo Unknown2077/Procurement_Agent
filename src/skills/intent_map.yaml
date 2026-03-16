@@ -1,0 +1,27 @@
+intents:
+  category_management:
+    keywords:
+      - sort
+      - rank
+      - priority
+      - category
+      - top
+      - highest
+  anomaly_detection:
+    keywords:
+      - anomaly
+      - duplicate
+      - overlap
+      - unusual hps
+  intelligent_recommendation:
+    keywords:
+      - recommendation
+      - method
+      - direct appointment
+      - sop
+  konsolidasi_pemaketan:
+    keywords:
+      - consolidation
+      - similarity
+      - similar
+      - merge package
