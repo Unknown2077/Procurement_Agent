@@ -4,26 +4,41 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-@dataclass(frozen=True)
+@dataclass
 class RuntimeSkillPack:
-    core_policy: str
-    intent_map_yaml: str
-    output_contract_json: str
+    """Skill pack with on-demand loading. Only output_contract is loaded at init."""
+
+    skills_dir: Path
+    _output_contract_json: str
+    _core_policy: str | None = None
+
+    @property
+    def output_contract_json(self) -> str:
+        return self._output_contract_json
+
+    @property
+    def core_policy(self) -> str:
+        if self._core_policy is None:
+            skill_file = self.skills_dir / "procurement_agent_skill.md"
+            if not skill_file.exists():
+                raise FileNotFoundError(f"Skill file missing: {skill_file}")
+            self._core_policy = skill_file.read_text(encoding="utf-8")
+        return self._core_policy
+
+    @property
+    def intent_map_yaml(self) -> str:
+        intent_map_file = self.skills_dir / "intent_map.yaml"
+        if not intent_map_file.exists():
+            raise FileNotFoundError(f"Intent map missing: {intent_map_file}")
+        return intent_map_file.read_text(encoding="utf-8")
 
     @staticmethod
     def load(skills_dir: Path) -> "RuntimeSkillPack":
-        skill_file: Path = skills_dir / "procurement_agent_skill.md"
-        intent_map_file: Path = skills_dir / "intent_map.yaml"
-        output_contract_file: Path = skills_dir / "output_contract.json"
-
-        for file_path in (skill_file, intent_map_file, output_contract_file):
-            if not file_path.exists():
-                raise FileNotFoundError(
-                    f"Runtime skill file missing: {file_path}"
-                )
-
+        skills_dir = Path(skills_dir)
+        output_contract_file = skills_dir / "output_contract.json"
+        if not output_contract_file.exists():
+            raise FileNotFoundError(f"Output contract missing: {output_contract_file}")
         return RuntimeSkillPack(
-            core_policy=skill_file.read_text(encoding="utf-8"),
-            intent_map_yaml=intent_map_file.read_text(encoding="utf-8"),
-            output_contract_json=output_contract_file.read_text(encoding="utf-8"),
+            skills_dir=skills_dir,
+            _output_contract_json=output_contract_file.read_text(encoding="utf-8"),
         )

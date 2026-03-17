@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from enum import StrEnum
-import json
 from typing import Any
 
 from src.llm.nim_client import NIMClient
@@ -20,7 +20,7 @@ class IntentType(StrEnum):
 class IntentResult:
     intent: IntentType
     confidence: float
-    entities: dict[str, str]
+    entities: dict[str, Any]
     complexity_score: float
 
 
@@ -35,6 +35,10 @@ def parse_intent(query: str, nim_client: NIMClient) -> IntentResult:
         "intent must be one of: category_management, anomaly_detection, "
         "intelligent_recommendation, konsolidasi_pemaketan, unknown.\n"
         "confidence and complexity_score must be between 0.0 and 1.0.\n"
+        "For intent anomaly_detection, entities MUST include anomaly_types: array of "
+        '"duplicate" and/or "overlap" and/or "hps" based on what the user asks (any language).\n'
+        "For intent konsolidasi_pemaketan, entities MAY include focus_terms: array of "
+        "topic keywords from the query (e.g. laptop, notebook, server) in any language.\n"
         f"Query: {normalized_query}"
     )
     payload = nim_client.summarize_json(
@@ -56,20 +60,55 @@ def parse_intent(query: str, nim_client: NIMClient) -> IntentResult:
     )
     entities_raw = payload["entities"]
     entities_raw = _normalize_entities(entities_raw)
-    entities: dict[str, str] = {}
+    entities: dict[str, Any] = {}
     for key, value in entities_raw.items():
         key_text = str(key).strip()
-        value_text = str(value).strip()
-        if key_text == "" or value_text == "":
+        if key_text == "":
             continue
-        entities[key_text] = value_text
+        if value is None:
+            continue
+        if isinstance(value, list):
+            entities[key_text] = [str(v).strip() for v in value if v is not None and str(v).strip()]
+        else:
+            value_text = str(value).strip()
+            if value_text == "":
+                continue
+            entities[key_text] = value_text
 
-    return IntentResult(
+    result = IntentResult(
         intent=intent,
         confidence=confidence,
         entities=entities,
         complexity_score=complexity_score,
     )
+    result = _override_to_category_for_hps_ranking(query=normalized_query, result=result)
+    return result
+
+
+def _override_to_category_for_hps_ranking(query: str, result: IntentResult) -> IntentResult:
+    if result.intent != IntentType.ANOMALY_DETECTION:
+        return result
+    ranking_markers: tuple[str, ...] = ("sort", "rank", "top", "highest", "descending")
+    anomaly_markers: tuple[str, ...] = ("anomaly", "unusual", "outlier", "duplicate", "overlap")
+    query_lower = query.lower()
+    has_ranking_marker = any(marker in query_lower for marker in ranking_markers)
+    has_explicit_anomaly_marker = any(marker in query_lower for marker in anomaly_markers)
+    anomaly_types_raw = result.entities.get("anomaly_types", [])
+    anomaly_types: list[str]
+    if isinstance(anomaly_types_raw, list):
+        anomaly_types = [str(value).strip().lower() for value in anomaly_types_raw]
+    else:
+        anomaly_types = [str(anomaly_types_raw).strip().lower()]
+    if has_ranking_marker and not has_explicit_anomaly_marker and anomaly_types == ["hps"]:
+        entities = dict(result.entities)
+        entities.pop("anomaly_types", None)
+        return IntentResult(
+            intent=IntentType.CATEGORY_MANAGEMENT,
+            confidence=result.confidence,
+            entities=entities,
+            complexity_score=result.complexity_score,
+        )
+    return result
 
 
 def _coerce_unit_interval(raw_value: object, field_name: str) -> float:

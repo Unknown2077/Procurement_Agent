@@ -41,4 +41,11 @@ class DataAdapter(Protocol):
 
     def get_similarity_candidates(self, min_score: float, limit: int) -> list[dict[str, object]]: ...
 
+    def get_similarity_candidates_with_focus(
+        self,
+        focus_terms: list[str],
+        min_score: float,
+        limit: int,
+    ) -> list[dict[str, object]]: ...
+
     def search_by_name(self, keyword: str, limit: int) -> list[PackageRow]: ...

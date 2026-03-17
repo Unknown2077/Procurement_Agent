@@ -61,11 +61,13 @@ class SQLiteRepository(DataAdapter):
         sql = """
             SELECT
               lower(trim(nama_paket)) AS normalized_name,
+              divisi_id,
+              divisi,
               COUNT(*) AS total,
-              GROUP_CONCAT(id_paket) AS paket_ids,
-              GROUP_CONCAT(divisi) AS divisi_list
+              GROUP_CONCAT(id_paket) AS paket_ids
             FROM dokumen_pengadaan
-            GROUP BY lower(trim(nama_paket))
+            WHERE divisi_id IS NOT NULL AND trim(divisi_id) <> ''
+            GROUP BY lower(trim(nama_paket)), divisi_id
             HAVING COUNT(*) > 1
             ORDER BY total DESC, normalized_name ASC
             LIMIT ?;
@@ -136,6 +138,63 @@ class SQLiteRepository(DataAdapter):
         """
         with self._connect() as connection:
             rows = self._execute_readonly(connection, sql, ())
+
+        candidates: list[dict[str, object]] = []
+        for left_idx in range(len(rows)):
+            left_row = rows[left_idx]
+            for right_idx in range(left_idx + 1, len(rows)):
+                right_row = rows[right_idx]
+                if left_row["id_paket"] == right_row["id_paket"]:
+                    continue
+                if left_row["divisi"] == right_row["divisi"]:
+                    continue
+                score = fuzz.token_sort_ratio(
+                    left_row["nama_paket"],
+                    right_row["nama_paket"],
+                ) / 100.0
+                if score < min_score:
+                    continue
+                candidates.append(
+                    {
+                        "left_id_paket": left_row["id_paket"],
+                        "left_nama_paket": left_row["nama_paket"],
+                        "left_divisi": left_row["divisi"],
+                        "right_id_paket": right_row["id_paket"],
+                        "right_nama_paket": right_row["nama_paket"],
+                        "right_divisi": right_row["divisi"],
+                        "similarity_score": round(score, 4),
+                    }
+                )
+                if len(candidates) >= safe_limit:
+                    return candidates
+        return candidates
+
+    def get_similarity_candidates_with_focus(
+        self,
+        focus_terms: list[str],
+        min_score: float,
+        limit: int,
+    ) -> list[dict[str, object]]:
+        if not (0.0 <= min_score <= 1.0):
+            raise ValueError("min_score must be between 0.0 and 1.0.")
+        safe_limit: int = max(1, min(limit, 200))
+        if not focus_terms:
+            return self.get_similarity_candidates(min_score=min_score, limit=safe_limit)
+
+        patterns = tuple(
+            f"%{str(term).strip().lower()}%" for term in focus_terms if term and str(term).strip()
+        )
+        if not patterns:
+            return self.get_similarity_candidates(min_score=min_score, limit=safe_limit)
+
+        sql = f"""
+            SELECT id_paket, nama_paket, divisi, divisi_id, kategori, anggaran_rkap_rp
+            FROM dokumen_pengadaan
+            WHERE {" OR ".join("lower(nama_paket) LIKE ?" for _ in patterns)}
+            ORDER BY nama_paket ASC;
+        """
+        with self._connect() as connection:
+            rows = self._execute_readonly(connection, sql, patterns)
 
         candidates: list[dict[str, object]] = []
         for left_idx in range(len(rows)):

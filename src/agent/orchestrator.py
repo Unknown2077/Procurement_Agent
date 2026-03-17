@@ -126,9 +126,10 @@ class AgentOrchestrator:
         }
 
     def _node_run_anomaly(self, state: OrchestratorState) -> OrchestratorState:
+        intent_result = state["intent_result"]
         data, rules_triggered, reasoning = run_anomaly_detection(
-            query=state["query"],
             adapter=self.adapter,
+            entities=intent_result.entities,
         )
         return {
             "data": data,
@@ -148,7 +149,11 @@ class AgentOrchestrator:
         }
 
     def _node_run_consolidation(self, state: OrchestratorState) -> OrchestratorState:
-        data, rules_triggered, reasoning = run_konsolidasi_pemaketan(adapter=self.adapter)
+        intent_result = state["intent_result"]
+        data, rules_triggered, reasoning = run_konsolidasi_pemaketan(
+            adapter=self.adapter,
+            entities=intent_result.entities,
+        )
         return {
             "data": data,
             "rules_triggered": rules_triggered,

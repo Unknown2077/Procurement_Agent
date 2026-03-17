@@ -15,13 +15,8 @@ uv sync
 cp .env.example .env
 ```
 
-## 1) Generate SQLite Database from XLSX
+## 1) Prepare SQLite Database
 
-```bash
-uv run python convert_xlsx_to_sqlite.py --drop-existing --validate
-```
-
-Expected output:
 - database file: `pengadaan.db`
 - tables: `dokumen_pengadaan`, `master_vendor`, `master_divisi`, `mapping_3_database`
 
